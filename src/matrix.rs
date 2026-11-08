@@ -1,4 +1,4 @@
-use std::ops::{Add, Sub, Mul, Div, AddAssign, SubAssign, MulAssign, DivAssign, Index, IndexMut, Neg};
+use std::ops::{Add, AddAssign, Div, DivAssign, Index, IndexMut, Mul, MulAssign, Neg, RangeBounds, Sub, SubAssign};
 use std::iter::{Iterator};
 
 #[derive(Debug, Clone)]
@@ -50,8 +50,36 @@ impl Matrix {
         return Matrix { rows: 0, cols: 0, values: Box::new([0.0; 0]) };
     }
 
+    pub fn is_empty(&self) -> bool {
+        return self.rows == 0 && self.cols == 0;
+    }
+
+    pub fn zero(&mut self) {
+        for v in &mut self.values {
+            *v = 0.0;
+        }
+    }
+
+    pub fn transposed(&self) -> Matrix {
+        let mut result = Matrix::new(self.cols, self.rows);
+
+        for i in 0..self.rows {
+            for j in 0..self.cols {
+                result[(j, i)] = (*self)[(i, j)];
+            }
+        }
+
+        return result;
+    }
+
     fn index(row: usize, col: usize, rows: usize) -> usize {
         return row + col * rows; // Column-major!
+    }
+
+    pub fn random_uniform<R: rand::distr::uniform::SampleRange<f32> + Clone>(&mut self, range: R) {
+        for v in &mut self.values {
+            *v = rand::random_range(range.clone());
+        }
     }
 
     pub fn shape(&self) -> (usize, usize) {
@@ -76,6 +104,28 @@ impl Matrix {
     pub fn sum(&self) -> f32 {return self.values.iter().sum();}
 
     pub fn values_mut(&mut self) -> &mut [f32] {return &mut self.values;}
+
+    pub fn mat_mul_into(a: &Matrix, b: &Matrix, out: &mut Matrix, zero: bool) {
+        assert!(a.cols == b.rows);
+
+        out.ensure_shape((a.rows, b.cols));
+        if zero {out.zero();};
+
+        for i in 0..a.rows {
+            for k in 0..b.cols {
+                for j in 0..a.cols {
+                    out[(i, k)] += a[(i, j)] * b[(j, k)];
+                }
+            }
+        }
+    }
+
+    // pub fn strassen_into(a: &Matrix, b: &Matrix, out: &mut Matrix, zero: bool) {
+    //     assert!(a.cols == b.rows);
+
+    //     out.ensure_shape((a.rows, b.cols));
+    //     if zero {out.zero();};
+    // }
 }
 
 impl AddAssign<&Matrix> for Matrix {
