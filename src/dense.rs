@@ -33,6 +33,14 @@ impl Layer for Dense {
 
     fn backward(&mut self, input: &Matrix, gradient_input: &Matrix, gradient_output: &mut Matrix) {
         Matrix::mat_mul_into(&self.weights.transposed(), gradient_input, gradient_output, false);
+
+        self.b_grad += gradient_input;
+
+        for i in 0..self.weights.get_rows() {
+            for j in 0..self.weights.get_cols() {
+                self.w_grad[(i, j)] += input[j] * gradient_input[i];
+            }
+        }
     }
 
     fn get_param_shapes(&self) -> Box<[(usize, usize)]> {

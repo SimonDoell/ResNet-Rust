@@ -171,7 +171,7 @@ impl Graph {
         self.end   = end;
     }
 
-    pub fn forward(&mut self, input: &mut Matrix) {
+    fn forward_helper(&mut self, input: &mut Matrix, train: bool) {
         let Some(execution) = &self.exec else {
             panic!("Build the exec tree first using .build_exec()")
         };
@@ -198,9 +198,23 @@ impl Graph {
             let mut layer = &mut self.nodes[*i as usize];
             layer.input = output_sum;
 
-            layer.layer.forward(&layer.input, &mut layer.output, false);
+            layer.layer.forward(&layer.input, &mut layer.output, train);
         }
 
         input.clone_from(&self.nodes[self.end as usize].output);
+    }
+
+    pub fn forward(&mut self, input: &mut Matrix) {
+        self.forward_helper(input, false);
+    }
+
+    pub fn train(&mut self, input: &Matrix, desired_output: &Matrix) {
+        let mut actv = input.clone();
+
+        self.forward_helper(&mut actv, true);
+
+        actv -= desired_output; // MSE derivative
+
+        
     }
 }

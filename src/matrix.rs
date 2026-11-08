@@ -105,6 +105,9 @@ impl Matrix {
 
     pub fn values_mut(&mut self) -> &mut [f32] {return &mut self.values;}
 
+    pub fn get_rows(&self) -> usize {return self.rows;}
+    pub fn get_cols(&self) -> usize {return self.cols;}
+
     pub fn mat_mul_into(a: &Matrix, b: &Matrix, out: &mut Matrix, zero: bool) {
         assert!(a.cols == b.rows);
 
