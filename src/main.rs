@@ -14,6 +14,9 @@ use graph::*;
 mod dense;
 use dense::*;
 
+mod optimizer;
+use optimizer::*;
+
 fn main() {
     let mut mlp = Graph::new();
 
