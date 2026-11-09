@@ -1,9 +1,10 @@
 #![allow(unused)]
 
 mod matrix;
-use std::io::ErrorKind::OutOfMemory;
-
 use matrix::*;
+
+mod adamw;
+use adamw::*;
 
 mod layer;
 use layer::*;

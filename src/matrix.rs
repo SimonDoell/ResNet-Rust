@@ -108,6 +108,14 @@ impl Matrix {
     pub fn get_rows(&self) -> usize {return self.rows;}
     pub fn get_cols(&self) -> usize {return self.cols;}
 
+    pub fn iter_mut<'l>(&'l mut self) -> std::slice::IterMut<'l, f32> {
+        return self.values.iter_mut();
+    }
+
+    pub fn iter<'l>(&'l self) -> std::slice::Iter<'l, f32> {
+        return self.values.iter();
+    }
+
     pub fn mat_mul_into(a: &Matrix, b: &Matrix, out: &mut Matrix, zero: bool) {
         assert!(a.cols == b.rows);
 

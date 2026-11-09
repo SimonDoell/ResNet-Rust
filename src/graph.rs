@@ -1,7 +1,6 @@
-use std::arch::x86_64::_CMP_NEQ_UQ;
-
 use crate::matrix::*;
-use crate::layer::*;
+use crate::adamw ::*;
+use crate::layer ::*;
 
 type NodeRef = u32;
 
@@ -93,16 +92,37 @@ impl AdjacencyStorage {
 }
 
 pub struct Graph {
+    learning_rate: f32,
+    betta_1:       f32,
+    betta_2:       f32,
+    lambda:        f32,
+    mini_batch:    u32,
+    
     nodes:    Vec<Node>,
     adjacent: AdjacencyStorage,
     exec:     Option<Vec<NodeRef>>,
     start:    NodeRef,
-    end:      NodeRef
+    end:      NodeRef,
+
+    t: u32,
 }
 
 impl Graph {
     pub fn new() -> Self {
-        return Self { nodes: Vec::new(), adjacent: AdjacencyStorage::new(), exec: None, start: 0, end: 0 };
+        return Self {
+            learning_rate: 0.01,
+            betta_1:       0.9,
+            betta_2:       0.999,
+            lambda:        0.001,
+            mini_batch:    1,
+            
+            nodes:    Vec::new(),
+            adjacent: AdjacencyStorage::new(),
+            exec:     None,
+            start:    0,
+            end:      0,
+            t:        1,
+        };
     }
 
     #[must_use]
@@ -181,24 +201,24 @@ impl Graph {
         if n < 2 {panic!("Too few layers are present; There must be at least 2: an input and output layer");}
 
         for i in execution {
-            let mut output_sum = Matrix::empty();
+            let mut input_sum = Matrix::empty();
 
             if *i == self.start {
-                output_sum = input.clone();
+                input_sum = input.clone();
             } else {
                 for c in self.adjacent.get_connections_to(*i) {
-                    if output_sum.is_empty() {
-                        output_sum = self.nodes[c as usize].output.clone();
+                    if input_sum.is_empty() {
+                        input_sum = self.nodes[c as usize].output.clone();
                     } else {
-                        output_sum += &self.nodes[c as usize].output;
+                        input_sum += &self.nodes[c as usize].output;
                     }
                 }
             }
             
-            let mut layer = &mut self.nodes[*i as usize];
-            layer.input = output_sum;
+            let mut node = &mut self.nodes[*i as usize];
+            node.input = input_sum;
 
-            layer.layer.forward(&layer.input, &mut layer.output, train);
+            node.layer.forward(&node.input, &mut node.output, train);
         }
 
         input.clone_from(&self.nodes[self.end as usize].output);
@@ -208,13 +228,50 @@ impl Graph {
         self.forward_helper(input, false);
     }
 
-    pub fn train(&mut self, input: &Matrix, desired_output: &Matrix) {
+    fn backward(&mut self, gradient: &Matrix) {
+        let Some(execution) = &self.exec else {
+            panic!("Build the exec tree first using .build_exec()")
+        };
+
+        let n = self.nodes.len();
+
+        if n < 2 {panic!("Too few layers are present; There must be at least 2: an input and output layer");}
+
+        for i in execution.iter().rev() {
+            let mut gradient_input_sum = Matrix::empty();
+            
+            if *i == self.end {
+                gradient_input_sum.clone_from(gradient);
+            } else {                
+                for c in self.adjacent.get_connections_to(*i) {
+                    if gradient_input_sum.is_empty() {
+                        gradient_input_sum = self.nodes[c as usize].grad_output.clone();
+                    } else {
+                        gradient_input_sum += &self.nodes[c as usize].grad_output;
+                    }
+                }
+            }
+
+            let mut node = &mut self.nodes[(*i) as usize];
+            node.grad_input = gradient_input_sum;
+
+            node.layer.backward(&node.input, &node.grad_input, &mut node.grad_output);
+        }
+    }
+
+    pub fn train(&mut self, input: &Matrix, output: &Matrix) {
         let mut actv = input.clone();
 
         self.forward_helper(&mut actv, true);
 
-        actv -= desired_output; // MSE derivative
-
+        actv -= output; // MSE derivative
         
+        self.backward(&actv);
+
+        self.t += 1;
+
+        if (self.t % self.mini_batch) == 0 {
+            // Update gradients
+        }
     }
 }
