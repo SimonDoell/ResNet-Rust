@@ -259,6 +259,10 @@ impl Graph {
         }
     }
 
+    fn apply_gradients(&mut self) {
+        todo!("Implement .apply_gradients()")
+    }
+
     pub fn train(&mut self, input: &Matrix, output: &Matrix) {
         let mut actv = input.clone();
 
@@ -271,7 +275,7 @@ impl Graph {
         self.t += 1;
 
         if (self.t % self.mini_batch) == 0 {
-            // Update gradients
+            self.apply_gradients();
         }
     }
 }

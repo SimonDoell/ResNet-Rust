@@ -23,7 +23,7 @@ impl AdamWContext {
             let m_hat = *m / b1_t;
             let v_hat = *v / b2_t;
 
-            *w -= lr * (m_hat / (v_hat.sqrt() + 1e-5) + lambda * *w - 1.0);
+            *w -= lr * (m_hat / (v_hat.sqrt() + 1e-5) + lambda * *w);
         }
 
         gradient.zero();
