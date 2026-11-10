@@ -92,15 +92,19 @@ impl AdjacencyStorage {
 }
 
 pub struct Graph {
-    learning_rate: f32,
-    betta_1:       f32,
-    betta_2:       f32,
-    lambda:        f32,
-    mini_batch:    u32,
+        learning_rate: f32,
+    pub lr_min:        f32,
+    pub lr_max:        f32,
+    pub total_steps:   u32,
+    pub betta_1:       f32,
+    pub betta_2:       f32,
+    pub lambda:        f32,
+    pub mini_batch:    u32,
     
     nodes:    Vec<Node>,
     adjacent: AdjacencyStorage,
     exec:     Option<Vec<NodeRef>>,
+    optim:    Option<Vec<AdamWContext>>,
     start:    NodeRef,
     end:      NodeRef,
 
@@ -110,7 +114,10 @@ pub struct Graph {
 impl Graph {
     pub fn new() -> Self {
         return Self {
-            learning_rate: 0.01,
+            lr_max:        0.005,
+            lr_min:        0.0005,
+            total_steps:   1_000_000,
+            learning_rate: 0.0,
             betta_1:       0.9,
             betta_2:       0.999,
             lambda:        0.001,
@@ -119,6 +126,7 @@ impl Graph {
             nodes:    Vec::new(),
             adjacent: AdjacencyStorage::new(),
             exec:     None,
+            optim:    None,
             start:    0,
             end:      0,
             t:        1,
@@ -131,6 +139,18 @@ impl Graph {
         let n = self.nodes.len() - 1;
         self.adjacent.resize((n + 1) as u32);
         return n as NodeRef;
+    }
+
+    fn build_optimizer(&mut self) {
+        self.optim = Some(Vec::new());
+
+        let Some(optimizer) = &mut self.optim else {panic!("Unexpected issue with the optimizer!");};
+        
+        for node in &mut self.nodes {
+            for shape in node.layer.get_param_shapes() {
+                optimizer.push(AdamWContext::new(shape));
+            }
+        }
     }
 
     pub fn build_exec(&mut self) {
@@ -164,6 +184,7 @@ impl Graph {
         }
 
         self.exec = Some(exec);
+        self.build_optimizer();
     }
 
     pub fn connect_layers(&mut self, a: NodeRef, b: NodeRef) {
@@ -173,7 +194,8 @@ impl Graph {
 
         self.adjacent.set_connection(a, b, true);
 
-        self.exec = None;
+        self.exec  = None;
+        self.optim = None;
     }
 
     pub fn connect_layer_list(&mut self, list: &[NodeRef]) {
@@ -243,7 +265,7 @@ impl Graph {
             if *i == self.end {
                 gradient_input_sum.clone_from(gradient);
             } else {                
-                for c in self.adjacent.get_connections_to(*i) {
+                for c in self.adjacent.get_connections_from(*i) {
                     if gradient_input_sum.is_empty() {
                         gradient_input_sum = self.nodes[c as usize].grad_output.clone();
                     } else {
@@ -260,10 +282,25 @@ impl Graph {
     }
 
     fn apply_gradients(&mut self) {
-        todo!("Implement .apply_gradients()")
+        let mut index: usize = 0;
+
+        let Some(optimizer) = &mut self.optim else {panic!("Tried to retrieve optimizer from None!");};
+
+        let betta_1_t = 1.0 - self.betta_1.powi(self.t as i32);
+        let betta_2_t = 1.0 - self.betta_2.powi(self.t as i32);
+
+        for layer in &mut self.nodes.iter_mut().map(|l| &mut l.layer) {
+            for (weights, gradient) in layer.get_params() {
+                optimizer[index].update(weights, gradient, self.learning_rate, self.lambda, self.betta_1, self.betta_2, betta_1_t, betta_2_t);
+                index += 1;
+            }
+        }
     }
 
     pub fn train(&mut self, input: &Matrix, output: &Matrix) {
+        let progress = (self.t as f32 / self.total_steps as f32).clamp(0.0, 1.0);
+        self.learning_rate = self.lr_min + 0.5 * (self.lr_max - self.lr_min) * (1.0 + (std::f32::consts::PI * progress).cos());
+        
         let mut actv = input.clone();
 
         self.forward_helper(&mut actv, true);

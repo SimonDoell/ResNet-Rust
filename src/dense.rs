@@ -32,7 +32,7 @@ impl Layer for Dense {
     }
 
     fn backward(&mut self, input: &Matrix, gradient_input: &Matrix, gradient_output: &mut Matrix) {
-        Matrix::mat_mul_into(&self.weights.transposed(), gradient_input, gradient_output, false);
+        Matrix::mat_mul_into(&self.weights.transposed(), gradient_input, gradient_output, true);
 
         self.b_grad += gradient_input;
 
