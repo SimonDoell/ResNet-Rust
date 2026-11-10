@@ -5,5 +5,4 @@ edition = "2024"
 
 [dependencies]
 rand = "0.10.3"
-sfml = "0.25.1"
 rayon = "1.12.0"
