@@ -1,7 +1,7 @@
 use std::ops::{Add, AddAssign, Div, DivAssign, Index, IndexMut, Mul, MulAssign, Neg, RangeBounds, Sub, SubAssign};
 use std::iter::{Iterator};
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct Matrix {
     rows: usize,
     cols: usize,
@@ -112,6 +112,8 @@ impl Matrix {
 
     pub fn sum(&self) -> f32 {return self.values.iter().sum();}
 
+    pub fn mean(&self) -> f32 {return self.sum() / self.elem_count() as f32;}
+
     pub fn values_mut(&mut self) -> &mut [f32] {return &mut self.values;}
 
     pub fn get_rows(&self) -> usize {return self.rows;}
@@ -125,16 +127,31 @@ impl Matrix {
         return self.values.iter();
     }
 
-    pub fn mul_into(a: &Matrix, b: &Matrix, out: &mut Matrix, zero: bool) {
+    pub fn as_slice(&self) -> &[f32] {
+        return &self.values;
+    }
+
+    pub fn as_mut_slice(&mut self) -> &mut [f32] {
+        return &mut self.values;
+    }
+
+    pub fn add_outer_product(&mut self, a: &Matrix, b: &Matrix) {
+        assert!(self.rows == a.elem_count());
+        assert!(self.cols == b.elem_count());
+
+        for j in 0..self.cols {
+            for i in 0..self.rows {
+                self[(i, j)] += a[i] * b[j];
+            }
+        }
+    }
+
+    fn mul_into_nn(a: &Matrix, b: &Matrix, out: &mut Matrix) {
         let m = a.rows;
         let n = b.cols;
         let p = a.cols;
-    
+        
         assert_eq!(p, b.rows);
-    
-        out.ensure_shape((m, n));
-    
-        if zero {out.zero();}
     
         let a_data = &a.values;
         let b_data = &b.values;
@@ -155,12 +172,99 @@ impl Matrix {
         }
     }
 
-    // pub fn strassen_into(a: &Matrix, b: &Matrix, out: &mut Matrix, zero: bool) {
-    //     assert!(a.cols == b.rows);
+    pub fn mul_into_nt(a: &Matrix, b: &Matrix, out: &mut Matrix) {
+        let m = a.rows;
+        let n = b.rows;
+        let p = a.cols;
 
-    //     out.ensure_shape((a.rows, b.cols));
-    //     if zero {out.zero();};
-    // }
+        assert_eq!(p, b.cols);
+
+        let a_data = &a.values;
+        let b_data = &b.values;
+        let out_data = &mut out.values;
+
+        for k in 0..n {
+            let out_offset = k * m;
+
+            for j in 0..p {
+                let b_kj = b_data[k + j * n];
+                let a_offset = j * m;
+
+                for i in 0..m {
+                    out_data[out_offset + i] +=
+                        a_data[a_offset + i] * b_kj;
+                }
+            }
+        }
+    }
+
+    pub fn mul_into_tn(a: &Matrix, b: &Matrix, out: &mut Matrix) {
+        let m = a.cols;
+        let n = b.cols;
+        let p = a.rows;
+
+        assert_eq!(p, b.rows);
+
+        let a_data = &a.values;
+        let b_data = &b.values;
+        let out_data = &mut out.values;
+
+        for k in 0..n {
+            let b_offset = k * p;
+            let out_offset = k * m;
+
+            for i in 0..m {
+                let a_offset = i * p;
+                let mut sum = 0.0;
+
+                for j in 0..p {
+                    sum += a_data[a_offset + j] * b_data[b_offset + j];
+                }
+
+                out_data[out_offset + i] += sum;
+            }
+        }
+    }
+
+    pub fn mul_into_tt(a: &Matrix, b: &Matrix, out: &mut Matrix) {
+        let m = a.cols;
+        let n = b.rows;
+        let p = a.rows;
+
+        assert_eq!(p, b.cols);
+
+        let a_data = &a.values;
+        let b_data = &b.values;
+        let out_data = &mut out.values;
+
+        for k in 0..n {
+            let out_offset = k * m;
+
+            for j in 0..p {
+                let b_kj = b_data[k + j * n];
+
+                for i in 0..m {
+                    out_data[out_offset + i] +=
+                        a_data[j + i * p] * b_kj;
+                }
+            }
+        }
+    }
+
+    pub fn mul_into(a: &Matrix, b: &Matrix, out: &mut Matrix, a_t: bool, b_t: bool, zero: bool) {
+        let a_rows = if a_t {a.get_cols()} else {a.get_rows()};
+        let b_cols = if b_t {b.get_rows()} else {b.get_cols()};
+        
+        if zero {out.zero();}
+        out.ensure_shape((a_rows, b_cols));
+
+        match (a_t, b_t) {
+            (false, false) => Self::mul_into_nn(a, b, out),
+            (true,  false) => Self::mul_into_tn(a, b, out),
+            (false, true ) => Self::mul_into_nt(a, b, out),
+            (true,  true ) => Self::mul_into_tt(a, b, out),
+        }
+    }
 }
 
 impl AddAssign<&Matrix> for Matrix {

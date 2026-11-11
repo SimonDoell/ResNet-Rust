@@ -56,7 +56,7 @@ fn run_mlp(iter: u32, test: u32, freq: u32) -> f32 {
     mlp.betta_2        = 0.999;
     mlp.lambda         = 0.0001;
     mlp.mini_batch     = 64;
-    mlp.clip_threshold = 15.0;
+    mlp.clip_threshold = 8.0;
 
     let layers = [
         mlp.push_layer(Dense::new(1, 32)),
@@ -128,7 +128,7 @@ fn main() {
     let mut error: Vec<f32> = Vec::new();
 
     for i in 0..iter {
-        error.push(run_mlp(5_000_000, 20_000, 20_000));
+        error.push(run_mlp(2_000_000, 10_000, 10_000));
         println!("Error {i}: {}", error.last().unwrap());
     }
 

@@ -36,7 +36,7 @@ impl Layer for LayerNorm {
 
         let n = input.elem_count();
 
-        let mean = input.sum() / n as f32;
+        let mean = input.mean();
 
         let mut variance = 0.0;
 
