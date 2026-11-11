@@ -116,16 +116,31 @@ impl Matrix {
         return self.values.iter();
     }
 
-    pub fn mat_mul_into(a: &Matrix, b: &Matrix, out: &mut Matrix, zero: bool) {
-        assert!(a.cols == b.rows);
-
-        out.ensure_shape((a.rows, b.cols));
-        if zero {out.zero();};
-
-        for i in 0..a.rows {
-            for k in 0..b.cols {
-                for j in 0..a.cols {
-                    out[(i, k)] += a[(i, j)] * b[(j, k)];
+    pub fn mul_into(a: &Matrix, b: &Matrix, out: &mut Matrix, zero: bool) {
+        let m = a.rows;
+        let n = b.cols;
+        let p = a.cols;
+    
+        assert_eq!(p, b.rows);
+    
+        out.ensure_shape((m, n));
+    
+        if zero {out.zero();}
+    
+        let a_data = &a.values;
+        let b_data = &b.values;
+        let out_data = &mut out.values;
+    
+        for k in 0..n {
+            for j in 0..p {
+                let b_jk = b_data[j + k * p];
+    
+                let a_offset = j * m;
+                let out_offset = k * m;
+    
+                for i in 0..m {
+                    out_data[out_offset + i] +=
+                        a_data[a_offset + i] * b_jk;
                 }
             }
         }

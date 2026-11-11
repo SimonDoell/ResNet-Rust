@@ -21,6 +21,9 @@ use optimizer::*;
 mod activation;
 use activation::*;
 
+mod layernorm;
+use layernorm::*;
+
 fn learn(x: f32) -> f32 {
     return (x * 2.0 * std::f32::consts::PI).sin() * 0.8;
 }
@@ -47,7 +50,7 @@ fn get_mlp_error(test: u32, mlp: &mut Graph) -> f32 {
 fn run_mlp(iter: u32, test: u32, freq: u32) -> f32 {
     let mut mlp = Graph::new();
     mlp.lr_max        = 0.001;
-    mlp.lr_min        = 0.000002;
+    mlp.lr_min        = 0.0000005;
     mlp.total_steps   = iter;
     mlp.betta_1       = 0.9;
     mlp.betta_2       = 0.999;
@@ -118,7 +121,7 @@ fn main() {
     let mut error: Vec<f32> = Vec::new();
 
     for i in 0..iter {
-        error.push(run_mlp(12_500_000, 20_000, 20_000));
+        error.push(run_mlp(15_000_000, 20_000, 20_000));
         println!("Error {i}: {}", error.last().unwrap());
     }
 

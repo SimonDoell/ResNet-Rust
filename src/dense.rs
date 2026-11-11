@@ -27,12 +27,12 @@ impl Dense {
 
 impl Layer for Dense {
     fn forward(&mut self, input: &Matrix, output: &mut Matrix, train: bool) {
-        Matrix::mat_mul_into(&self.weights, input, output, true);
+        Matrix::mul_into(&self.weights, input, output, true);
         *output += &self.biases;
     }
 
     fn backward(&mut self, input: &Matrix, gradient_input: &Matrix, gradient_output: &mut Matrix) {
-        Matrix::mat_mul_into(&self.weights.transposed(), gradient_input, gradient_output, true);
+        Matrix::mul_into(&self.weights.transposed(), gradient_input, gradient_output, true);
 
         self.b_grad += gradient_input;
 
