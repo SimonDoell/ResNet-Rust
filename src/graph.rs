@@ -92,14 +92,15 @@ impl AdjacencyStorage {
 }
 
 pub struct Graph {
-        learning_rate: f32,
-    pub lr_min:        f32,
-    pub lr_max:        f32,
-    pub total_steps:   u32,
-    pub betta_1:       f32,
-    pub betta_2:       f32,
-    pub lambda:        f32,
-    pub mini_batch:    u32,
+        learning_rate:  f32,
+    pub lr_start:       f32,
+    pub lr_end:         f32,
+    pub total_steps:    u32,
+    pub betta_1:        f32,
+    pub betta_2:        f32,
+    pub lambda:         f32,
+    pub mini_batch:     u32,
+    pub clip_threshold: f32,
     
     nodes:    Vec<Node>,
     adjacent: AdjacencyStorage,
@@ -108,20 +109,22 @@ pub struct Graph {
     start:    NodeRef,
     end:      NodeRef,
 
-    t: u32,
+    step: u32, // total training steps which accumulated gradients
+    t:    u32, // steps the optimizer took
 }
 
 impl Graph {
     pub fn new() -> Self {
         return Self {
-            lr_max:        0.005,
-            lr_min:        0.0005,
-            total_steps:   1_000_000,
-            learning_rate: 0.0,
-            betta_1:       0.9,
-            betta_2:       0.999,
-            lambda:        0.001,
-            mini_batch:    1,
+            lr_start:         0.005,
+            lr_end:         0.0005,
+            total_steps:    1_000_000,
+            learning_rate:  0.0,
+            betta_1:        0.9,
+            betta_2:        0.999,
+            lambda:         0.001,
+            mini_batch:     1,
+            clip_threshold: 1.0,
             
             nodes:    Vec::new(),
             adjacent: AdjacencyStorage::new(),
@@ -130,6 +133,7 @@ impl Graph {
             start:    0,
             end:      0,
             t:        1,
+            step:     0,
         };
     }
 
@@ -281,7 +285,47 @@ impl Graph {
         }
     }
 
-    fn apply_gradients(&mut self) {
+    fn average_gradients(&mut self) {
+        for node in &mut self.nodes {
+            for (_, gradient) in node.layer.get_params() {
+                *gradient /= self.mini_batch as f32;
+            }
+        }
+    }
+
+    fn clip_gradients(&mut self) {
+        let mut norm_sqr = 0.0;
+
+        for node in &mut self.nodes {
+            for (_, gradient) in node.layer.get_params() {
+                for v in gradient.iter() {
+                    norm_sqr += (*v as f64).powi(2);
+                }
+            }
+        }
+
+        let norm = norm_sqr.sqrt();
+        
+        if norm > self.clip_threshold as f64 {
+            let factor = (self.clip_threshold as f64 / norm) as f32;
+
+            for node in &mut self.nodes {
+                for (_, gradient) in node.layer.get_params() {
+                    *gradient *= factor;
+                }
+            }
+        }
+    }
+
+    fn zero_gradients(&mut self) {
+        for node in &mut self.nodes {
+            for (_, gradient) in node.layer.get_params() {
+                gradient.zero();
+            }
+        }
+    }
+
+    fn apply_optimizer(&mut self) {
         let mut index: usize = 0;
 
         let Some(optimizer) = &mut self.optim else {panic!("Tried to retrieve optimizer from None!");};
@@ -295,23 +339,34 @@ impl Graph {
                 index += 1;
             }
         }
+
+        self.t += 1;
+    }
+
+    fn apply_gradients(&mut self) {
+        self.average_gradients();
+        self.clip_gradients();
+        self.apply_optimizer();
+        self.zero_gradients();
     }
 
     pub fn train(&mut self, input: &Matrix, output: &Matrix) {
-        let progress = (self.t as f32 / self.total_steps as f32).clamp(0.0, 1.0);
-        self.learning_rate = self.lr_min + 0.5 * (self.lr_max - self.lr_min) * (1.0 + (std::f32::consts::PI * progress).cos());
+        let progress = (self.step as f32 / self.total_steps as f32).clamp(0.0, 1.0);
+        self.learning_rate = self.lr_end + 0.5 * (self.lr_start - self.lr_end) * (1.0 + (std::f32::consts::PI * progress).cos());
         
         let mut actv = input.clone();
 
         self.forward_helper(&mut actv, true);
 
         actv -= output; // MSE derivative
+
+        actv /= actv.elem_count() as f32;
         
         self.backward(&actv);
 
-        self.t += 1;
+        self.step += 1;
 
-        if (self.t % self.mini_batch) == 0 {
+        if (self.step % self.mini_batch) == 0 {
             self.apply_gradients();
         }
     }

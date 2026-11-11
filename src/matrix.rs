@@ -51,6 +51,10 @@ impl Matrix {
         return Matrix { rows: rows, cols: cols, values: values.to_vec().into_boxed_slice() };
     }
 
+    pub fn new_from_value(rows: usize, cols: usize, value: f32) -> Self {
+        return Matrix { rows: rows, cols: cols, values: vec![value; rows * cols].into_boxed_slice() };
+    }
+
     pub fn empty() -> Self {
         return Matrix { rows: 0, cols: 0, values: Box::new([0.0; 0]) };
     }
@@ -209,30 +213,35 @@ impl SubAssign<&Matrix> for Matrix {
 
 impl SubAssign<Matrix> for Matrix {
     fn sub_assign(&mut self, rhs: Matrix) {
-        *self += &rhs;
+        *self -= &rhs;
     }
 }
 
 impl Sub<&Matrix> for Matrix {
     type Output = Matrix;
-    fn sub(mut self, rhs: &Matrix) -> Self::Output {self += rhs; self}
+    fn sub(mut self, rhs: &Matrix) -> Self::Output {self -= rhs; self}
 }
 
 impl Sub<Matrix> for &Matrix {
     type Output = Matrix;
-    fn sub(self, mut rhs: Matrix) -> Self::Output {rhs += self; rhs}
+    fn sub(self, mut rhs: Matrix) -> Self::Output {
+        for i in 0..rhs.elem_count() {
+            rhs[i] = self[i] - rhs[i];
+        }
+        rhs
+    }
 }
 
 impl Sub<Matrix> for Matrix {
     type Output = Matrix;
-    fn sub(self, rhs: Matrix) -> Self::Output {self + &rhs}
+    fn sub(self, rhs: Matrix) -> Self::Output {self - &rhs}
 }
 
 impl Sub<&Matrix> for &Matrix {
     type Output = Matrix;
     fn sub(self, rhs: &Matrix) -> Self::Output {
         let mut result = self.clone();
-        result += rhs;
+        result -= rhs;
         return result;
     }
 }
@@ -271,12 +280,12 @@ impl DivAssign<f32> for Matrix {
 
 impl Div<f32> for Matrix {
     type Output = Matrix;
-    fn div(mut self, rhs: f32) -> Self::Output {self *= rhs; self}
+    fn div(mut self, rhs: f32) -> Self::Output {self /= rhs; self}
 }
 
 impl Div<f32> for &Matrix {
     type Output = Matrix;
-    fn div(self, rhs: f32) -> Self::Output {self.clone() * rhs}
+    fn div(self, rhs: f32) -> Self::Output {self.clone() / rhs}
 }
 
 impl Div<Matrix> for f32 {

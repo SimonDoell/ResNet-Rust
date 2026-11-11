@@ -8,11 +8,20 @@ pub struct Activation {
     derivative: Function,
 }
 
+static LEAKAGE: f32 = 0.15;
+
 impl Activation {
     pub fn new_tanh() -> Self {
         return Self {
             forward:    |x| x.tanh(),
             derivative: |x| 1.0 - x.tanh().powi(2)
+        }
+    }
+
+    pub fn new_leaky_tanh() -> Self {
+        return Self {
+            forward:    |x| x.tanh() + LEAKAGE * x,
+            derivative: |x| (1.0 + LEAKAGE) - x.tanh().powi(2)
         }
     }
 
@@ -25,8 +34,8 @@ impl Activation {
 
     pub fn new_leaky_relu() -> Self {
         return Self {
-            forward:    |x| if x < 0.0 {x * 0.1} else { x },
-            derivative: |x| if x < 0.0 {    0.1} else {1.0}
+            forward:    |x| if x < 0.0 {x * LEAKAGE} else { x },
+            derivative: |x| if x < 0.0 {    LEAKAGE} else {1.0}
         }
     }
 }

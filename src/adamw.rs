@@ -25,7 +25,5 @@ impl AdamWContext {
 
             *w -= lr * (m_hat / (v_hat.sqrt() + 1e-5) + lambda * *w);
         }
-
-        gradient.zero();
     }
 }

@@ -15,9 +15,6 @@ use graph::*;
 mod dense;
 use dense::*;
 
-mod optimizer;
-use optimizer::*;
-
 mod activation;
 use activation::*;
 
@@ -49,48 +46,54 @@ fn get_mlp_error(test: u32, mlp: &mut Graph) -> f32 {
 
 fn run_mlp(iter: u32, test: u32, freq: u32) -> f32 {
     let mut mlp = Graph::new();
-    mlp.lr_max        = 0.001;
-    mlp.lr_min        = 0.0000005;
-    mlp.total_steps   = iter;
-    mlp.betta_1       = 0.9;
-    mlp.betta_2       = 0.999;
-    mlp.lambda        = 0.0001;
-    mlp.mini_batch    = 72;
+    mlp.lr_start       = 0.001;
+    mlp.lr_end         = 0.000005;
+    mlp.total_steps    = iter;
+    mlp.betta_1        = 0.9;
+    mlp.betta_2        = 0.999;
+    mlp.lambda         = 0.0001;
+    mlp.mini_batch     = 64;
+    mlp.clip_threshold = 15.0;
 
     let layers = [
         mlp.push_layer(Dense::new(1, 32)),
         mlp.push_layer(Activation::new_leaky_relu()),
+        mlp.push_layer(LayerNorm::new(32)),
         mlp.push_layer(Dense::new(32, 32)),
         mlp.push_layer(Activation::new_leaky_relu()),
-        mlp.push_layer(LayerNorm::new()),
+        mlp.push_layer(LayerNorm::new(32)),
         mlp.push_layer(Dense::new(32, 32)),
         mlp.push_layer(Activation::new_leaky_relu()),
+        mlp.push_layer(LayerNorm::new(32)),
         mlp.push_layer(Dense::new(32, 32)),
         mlp.push_layer(Activation::new_leaky_relu()),
-        mlp.push_layer(LayerNorm::new()),
+        mlp.push_layer(LayerNorm::new(32)),
         mlp.push_layer(Dense::new(32, 32)),
         mlp.push_layer(Activation::new_leaky_relu()),
+        mlp.push_layer(LayerNorm::new(32)),
         mlp.push_layer(Dense::new(32, 32)),
         mlp.push_layer(Activation::new_leaky_relu()),
-        mlp.push_layer(LayerNorm::new()),
+        mlp.push_layer(LayerNorm::new(32)),
         mlp.push_layer(Dense::new(32, 32)),
         mlp.push_layer(Activation::new_leaky_relu()),
+        mlp.push_layer(LayerNorm::new(32)),
         mlp.push_layer(Dense::new(32, 32)),
         mlp.push_layer(Activation::new_leaky_relu()),
-        mlp.push_layer(LayerNorm::new()),
+        mlp.push_layer(LayerNorm::new(32)),
         mlp.push_layer(Dense::new(32, 32)),
         mlp.push_layer(Activation::new_leaky_relu()),
+        mlp.push_layer(LayerNorm::new(32)),
         mlp.push_layer(Dense::new(32, 32)),
         mlp.push_layer(Activation::new_leaky_relu()),
-        mlp.push_layer(LayerNorm::new()),
+        mlp.push_layer(LayerNorm::new(32)),
         mlp.push_layer(Dense::new(32, 32)),
         mlp.push_layer(Activation::new_leaky_relu()),
         mlp.push_layer(Dense::new(32, 1)),
     ];
 
-    // for i in (0..(layers.len() - 1) as u32).step_by(2) {
-    //     mlp.connect_layers(i, i + 2);
-    // }
+    for i in (0..(layers.len() - 3) as u32).step_by(3) {
+        mlp.connect_layers(i, i + 3);
+    }
 
     mlp.connect_layer_list(&layers);
     mlp.set_start_end(*layers.first().unwrap(), *layers.last().unwrap());
@@ -116,16 +119,13 @@ fn run_mlp(iter: u32, test: u32, freq: u32) -> f32 {
     return get_mlp_error(test, &mut mlp);
 }
 
-// ToDo:
-// - gradient norm !
-
 fn main() {
     let iter = 1;
 
     let mut error: Vec<f32> = Vec::new();
 
     for i in 0..iter {
-        error.push(run_mlp(15_000_000, 20_000, 20_000));
+        error.push(run_mlp(5_000_000, 20_000, 20_000));
         println!("Error {i}: {}", error.last().unwrap());
     }
 
