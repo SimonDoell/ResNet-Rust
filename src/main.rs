@@ -62,30 +62,35 @@ fn run_mlp(iter: u32, test: u32, freq: u32) -> f32 {
         mlp.push_layer(Activation::new_leaky_relu()),
         mlp.push_layer(Dense::new(32, 32)),
         mlp.push_layer(Activation::new_leaky_relu()),
+        mlp.push_layer(LayerNorm::new()),
         mlp.push_layer(Dense::new(32, 32)),
         mlp.push_layer(Activation::new_leaky_relu()),
         mlp.push_layer(Dense::new(32, 32)),
         mlp.push_layer(Activation::new_leaky_relu()),
+        mlp.push_layer(LayerNorm::new()),
         mlp.push_layer(Dense::new(32, 32)),
         mlp.push_layer(Activation::new_leaky_relu()),
         mlp.push_layer(Dense::new(32, 32)),
         mlp.push_layer(Activation::new_leaky_relu()),
+        mlp.push_layer(LayerNorm::new()),
         mlp.push_layer(Dense::new(32, 32)),
         mlp.push_layer(Activation::new_leaky_relu()),
         mlp.push_layer(Dense::new(32, 32)),
         mlp.push_layer(Activation::new_leaky_relu()),
+        mlp.push_layer(LayerNorm::new()),
         mlp.push_layer(Dense::new(32, 32)),
         mlp.push_layer(Activation::new_leaky_relu()),
         mlp.push_layer(Dense::new(32, 32)),
         mlp.push_layer(Activation::new_leaky_relu()),
+        mlp.push_layer(LayerNorm::new()),
         mlp.push_layer(Dense::new(32, 32)),
         mlp.push_layer(Activation::new_leaky_relu()),
         mlp.push_layer(Dense::new(32, 1)),
     ];
 
-    for i in (0..(layers.len() - 1) as u32).step_by(2) {
-        mlp.connect_layers(i, i + 2);
-    }
+    // for i in (0..(layers.len() - 1) as u32).step_by(2) {
+    //     mlp.connect_layers(i, i + 2);
+    // }
 
     mlp.connect_layer_list(&layers);
     mlp.set_start_end(*layers.first().unwrap(), *layers.last().unwrap());
@@ -112,7 +117,6 @@ fn run_mlp(iter: u32, test: u32, freq: u32) -> f32 {
 }
 
 // ToDo:
-// - layer norm !
 // - gradient norm !
 
 fn main() {

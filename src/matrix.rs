@@ -46,6 +46,11 @@ impl Matrix {
         return Matrix { rows: rows, cols: cols, values: vec![0.0; rows * cols].into_boxed_slice() };
     }
 
+    pub fn new_from(rows: usize, cols: usize, values: &[f32]) -> Self {
+        assert!(values.len() == rows * cols);
+        return Matrix { rows: rows, cols: cols, values: values.to_vec().into_boxed_slice() };
+    }
+
     pub fn empty() -> Self {
         return Matrix { rows: 0, cols: 0, values: Box::new([0.0; 0]) };
     }
