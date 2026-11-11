@@ -5,7 +5,3 @@ edition = "2024"
 
 [dependencies]
 rand = "0.10.3"
-<<<<<<< HEAD
-rayon = "1.12.0"
-=======
->>>>>>> rewrite
