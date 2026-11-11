@@ -62,8 +62,8 @@ fn run_mlp(iter: u32, test: u32, freq: u32) -> f32 {
     mlp.clip_threshold = 8.0;
 
     let layers = [
-        mlp.push_layer(PositionalEncoding::new(16)),
-        mlp.push_layer(Dense::new(33, 32)), // 2 * 16 + 1 (identity)
+        // mlp.push_layer(PositionalEncoding::new(16)),
+        mlp.push_layer(Dense::new(1, 32)),
         mlp.push_layer(Activation::new_leaky_relu()),
         mlp.push_layer(LayerNorm::new(32)),
         mlp.push_layer(Dense::new(32, 32)),
@@ -98,56 +98,11 @@ fn run_mlp(iter: u32, test: u32, freq: u32) -> f32 {
         mlp.push_layer(Dense::new(32, 1)),
     ];
 
-    for i in (1..(layers.len() - 4) as u32).step_by(4) {
+    for i in (0..(layers.len() - 4) as u32).step_by(4) {
         mlp.connect_layers(i, i + 4);
     }
 
     mlp.connect_layer_list(&layers);
-    
-    // let mut mlp = Graph::new();
-    
-    // mlp.lr_start       = 0.001;
-    // mlp.lr_end         = 0.000001;
-    // mlp.total_steps    = iter;
-    // mlp.betta_1        = 0.9;
-    // mlp.betta_2        = 0.999;
-    // mlp.lambda         = 0.0001;
-    // mlp.mini_batch     = 64;
-    // mlp.clip_threshold = 1.0;
-    
-    // let mut layers = Vec::new();
-    
-    // let input = mlp.push_layer(PositionalEncoding::new(16));
-    // layers.push(input);
-    
-    // let projection = mlp.push_layer(Dense::new(33, 64));
-    // layers.push(projection);
-    
-    // let mut previous = projection;
-    
-    // for _ in 0..6 {
-    //     let norm = mlp.push_layer(LayerNorm::new(64));
-    //     let dense1 = mlp.push_layer(Dense::new(64, 64));
-    //     let act = mlp.push_layer(Activation::new_leaky_relu());
-    //     let dense2 = mlp.push_layer(Dense::new(64, 64));
-    
-    //     mlp.connect_layers(previous, norm);
-    //     mlp.connect_layers(norm, dense1);
-    //     mlp.connect_layers(dense1, act);
-    //     mlp.connect_layers(act, dense2);
-    
-    //     // Residual addition:
-    //     mlp.connect_layers(previous, dense2);
-    
-    //     previous = dense2;
-    //     layers.push(norm);
-    //     layers.push(dense1);
-    //     layers.push(act);
-    //     layers.push(dense2);
-    // }
-    
-    // let output = mlp.push_layer(Dense::new(64, 1));
-    // mlp.connect_layers(previous, output);
     
     mlp.set_start_end(*layers.first().unwrap(), *layers.last().unwrap());
     mlp.build_exec();
