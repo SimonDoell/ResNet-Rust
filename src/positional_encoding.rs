@@ -1,45 +1,46 @@
 use crate::matrix::*;
-use crate::mlp::*;
+use crate::layer::*;
 
 pub struct PositionalEncoding {
     frequencys: usize,
-    cached_activation: Matrix,
 }
 
 impl PositionalEncoding {
     pub fn new(frequencys: usize) -> Self {
-        return Self { frequencys: frequencys, cached_activation: Matrix::new(0, 0) };
+        return Self { frequencys: frequencys };
     }
 }
 
 impl Layer for PositionalEncoding {
-    fn forward(&mut self, input: &mut Matrix, train: bool) {
-        let n = input.get_rows() * input.get_cols();
+    fn forward(&mut self, input: &Matrix, output: &mut Matrix, train: bool) {
+        let n = input.elem_count();
+        
+        output.ensure_shape((2 * n * self.frequencys + n, 1));
 
-        let mut output = Matrix::new(2 * n * self.frequencys, 1);
+        for i in 0..n {
+            output[i] = input[i];
+        }
 
         for k in 0..self.frequencys {
-            let freq = 2f32.powi(k as i32);
+            let freq = 2.0_f32.powi(k as i32);
             for i in 0..n {
-                let index = 2 * (k * n + i);
+                let index = 2 * (k * n + i) + n;
                 let phase = input[i] * 2.0 * std::f32::consts::PI * freq;
                 output[index + 0] = phase.sin();
                 output[index + 1] = phase.cos();
             }
         }
-
-        *input = output;
     }
 
-    fn backward(&mut self, gradient: &mut Matrix) {
-        // Does nothin!
+    fn backward(&mut self, input: &Matrix, gradient_input: &Matrix, gradient_output: &mut Matrix) {
+        
     }
 
-    fn get_params(&mut self) -> Vec<(&mut Matrix, &mut Matrix)> {
-        return vec![];
+    fn get_param_shapes(&self) -> Box<[(usize, usize)]> {
+        return vec![].into();
     }
 
-    fn get_params_shape(&self) -> Vec<(usize, usize)> {
-        return vec![];
+    fn get_params(&mut self)   -> Box<[(&mut Matrix, &mut Matrix)]> {
+        return vec![].into();
     }
 }

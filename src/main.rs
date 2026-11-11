@@ -1,37 +1,40 @@
 #![allow(unused)]
 
-// agy --conversation=6ba0695a-e844-44e0-ba45-d55f26b295c9
-
-use std::fs::*;
-use std::io::prelude::*;
-
 mod matrix;
 use matrix::*;
 
-mod mlp;
-use mlp::*;
+mod adamw;
+use adamw::*;
+
+mod layer;
+use layer::*;
+
+mod graph;
+use graph::*;
 
 mod dense;
 use dense::*;
 
-mod actv;
-use actv::*;
+mod activation;
+use activation::*;
 
-mod layer_norm;
-use layer_norm::*;
+mod layernorm;
+use layernorm::*;
+
+mod dropout;
+use dropout::*;
 
 mod positional_encoding;
 use positional_encoding::*;
 
-mod dropout;
-use dropout::*;
+use std::fs::File;
+use std::io::Write;
 
 static WIDTH:  i32 = 200;
 static HEIGHT: i32 = 200;
 
 static EPOCHS: i32 = 1_000_000;
 static SAVE_STOPS: i32 = 10_000;
-
 
 fn hash(x: i32, y: i32) -> f32 {
     let mut n = (x as u32)
@@ -170,12 +173,11 @@ fn target_function(i: i32, j: i32) -> (u8, u8, u8) {
     b *= vignette;
 
     (
-        clamp(r / 255.0) .mul_add(255.0, 0.0) as u8,
-        clamp(g / 255.0) .mul_add(255.0, 0.0) as u8,
+        clamp(r / 255.0).mul_add(255.0, 0.0) as u8,
+        clamp(g / 255.0).mul_add(255.0, 0.0) as u8,
         clamp(b / 255.0).mul_add(255.0, 0.0) as u8,
     )
 }
-
 
 fn mlp_snapshot(mlp: &mut MLP, file_name: String) -> Result<(), std::io::Error> {
     let mut file = File::create(file_name)?;
@@ -190,7 +192,7 @@ fn mlp_snapshot(mlp: &mut MLP, file_name: String) -> Result<(), std::io::Error> 
         for j in 0..HEIGHT {
             input.ensure_shape(2, 1);
             input.set_values(&[
-                i as f32 / WIDTH  as f32,
+                i as f32 / WIDTH as f32,
                 j as f32 / HEIGHT as f32,
             ]);
 
@@ -206,82 +208,115 @@ fn mlp_snapshot(mlp: &mut MLP, file_name: String) -> Result<(), std::io::Error> 
         }
     }
 
-    return Ok(());
+    Ok(())
 }
 
 fn lerp(p: f32, a: f32, b: f32) -> f32 {
-    return a + (b - a) * p;
+    a + (b - a) * p
 }
 
 fn invlerp(x: f32, a: f32, b: f32) -> f32 {
-    return (x - a) / (b - a);
+    (x - a) / (b - a)
 }
 
 fn map(x: f32, a: f32, b: f32, c: f32, d: f32) -> f32 {
     let p = invlerp(x, a, b);
-    return lerp(p, c, d);
+    lerp(p, c, d)
 }
 
 fn mapclamp(x: f32, a: f32, b: f32, c: f32, d: f32) -> f32 {
     let p = invlerp(x, a, b).clamp(0.0, 1.0);
-    return lerp(p, c, d);
+    lerp(p, c, d)
 }
 
 fn learn(x: f32) -> f32 {
-    return (3.0 * x * 2.0 * std::f32::consts::PI).sin() * 0.8;
+    (x * 2.0 * std::f32::consts::PI).sin() * 0.8
+}
+
+fn get_mlp_error(test: u32, mlp: &mut Graph) -> f32 {
+    let mut error: f32 = 0.0;
+    let mut input = Matrix::new(1, 1);
+
+    for _ in 0..test {
+        let value = rand::random_range(-1.0..1.0);
+        input[0] = value;
+        mlp.forward(&mut input);
+        error += (input[0] - learn(value)).abs();
+    }
+
+    error / test as f32
+}
+
+fn run_mlp(iter: u32, test: u32, freq: u32) -> f32 {
+    let mut mlp = Graph::new();
+    mlp.lr_start = 0.001;
+    mlp.lr_end = 0.000001;
+    mlp.total_steps = iter;
+    mlp.betta_1 = 0.9;
+    mlp.betta_2 = 0.999;
+    mlp.lambda = 0.0001;
+    mlp.mini_batch = 64;
+    mlp.clip_threshold = 8.0;
+
+    let layers = [
+        mlp.push_layer(PositionalEncoding::new(16)),
+        mlp.push_layer(Dense::new(33, 32)), // 2 * 16 + 1 (identity)
+        mlp.push_layer(Activation::new_leaky_relu()),
+        mlp.push_layer(LayerNorm::new(32)),
+        mlp.push_layer(Dense::new(32, 32)),
+        mlp.push_layer(Activation::new_leaky_relu()),
+        mlp.push_layer(LayerNorm::new(32)),
+        mlp.push_layer(Dense::new(32, 32)),
+        mlp.push_layer(Activation::new_leaky_relu()),
+        mlp.push_layer(LayerNorm::new(32)),
+        mlp.push_layer(Dense::new(32, 32)),
+        mlp.push_layer(Activation::new_leaky_relu()),
+        mlp.push_layer(LayerNorm::new(32)),
+        mlp.push_layer(Dense::new(32, 32)),
+        mlp.push_layer(Activation::new_leaky_relu()),
+        mlp.push_layer(LayerNorm::new(32)),
+        mlp.push_layer(Dense::new(32, 32)),
+        mlp.push_layer(Activation::new_leaky_relu()),
+        mlp.push_layer(LayerNorm::new(32)),
+        mlp.push_layer(Dense::new(32, 32)),
+        mlp.push_layer(Activation::new_leaky_relu()),
+        mlp.push_layer(LayerNorm::new(32)),
+        mlp.push_layer(Dense::new(32, 32)),
+        mlp.push_layer(Activation::new_leaky_relu()),
+        mlp.push_layer(LayerNorm::new(32)),
+        mlp.push_layer(Dense::new(32, 32)),
+        mlp.push_layer(Activation::new_leaky_relu()),
+        mlp.push_layer(LayerNorm::new(32)),
+        mlp.push_layer(Dense::new(32, 32)),
+        mlp.push_layer(Activation::new_leaky_relu()),
+        mlp.push_layer(LayerNorm::new(32)),
+        mlp.push_layer(Dense::new(32, 1)),
+    ];
+
+    for i in (1..(layers.len() - 4) as u32).step_by(4) {
+        mlp.connect_layers(i, i + 4);
+    }
+
+    mlp.connect_layer_list(&layers);
+    mlp.set_start_end(*layers.first().unwrap(), *layers.last().unwrap());
+    mlp.build_exec();
+
+    get_mlp_error(test, &mut mlp)
 }
 
 fn main() {
-    let mut mlp = MLP::new();
-    mlp.learning_rate = 0.001;
-    mlp.betta_1       = 0.9;
-    mlp.betta_2       = 0.999;
-    mlp.lambda        = 0.00001;
-    mlp.mini_batch    = 32;
-
-    mlp.push_layer(PositionalEncoding::new(16));
-
-    mlp.push_layer(Dense::new(32, 128));
-    mlp.push_layer(Activation::tanh());
-    
-    mlp.push_layer(Dense::new(128, 128));
-    mlp.push_layer(Activation::tanh());
-    
-    mlp.push_layer(Dense::new(128, 64));
-    mlp.push_layer(Activation::tanh());
-    
-    mlp.push_layer(Dense::new(64, 1));
-
-    let iter = 1_000_000;
-    let test = 1_000;
-
-    let mut input  = Matrix::new(1, 0);
-    let mut output = Matrix::new(1, 0);
+    let iter = 1;
+    let mut error: Vec<f32> = Vec::new();
 
     for i in 0..iter {
-        input .ensure_shape(1, 1);
-        output.ensure_shape(1, 1);
-        
-        input [0] = rand::random_range(0.0..1.0);
-        output[0] = learn(input[0]);
-
-        mlp.train(&input, &output);
-
-        if i % test == 0 {
-            let mut error = 0.0;
-
-            for k in 0..test {
-                input [0] = rand::random_range(0.0..1.0);
-                output[0] = learn(input[0]);
-
-                mlp.forward(&mut input);
-
-                error += (input[0] - output[0]).abs();
-            }
-
-            error /= test as f32;
-
-            println!("Error: {error}");
-        }
+        error.push(run_mlp(2_000_000, 10_000, 10_000));
+        println!("Error {i}: {}", error.last().unwrap());
     }
+
+    let mean = error.iter().sum::<f32>() / error.len() as f32;
+    let std_sqr = error.iter().map(|x| (x - mean).abs()).sum::<f32>() / error.len() as f32;
+
+    println!("Final:");
+    println!("  Mean: {}", mean);
+    println!("  Std Dev.: {}", std_sqr);
 }

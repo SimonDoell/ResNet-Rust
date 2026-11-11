@@ -29,6 +29,7 @@ dependencies = [
 ]
 
 [[package]]
+<<<<<<< HEAD
 name = "crossbeam-deque"
 version = "0.8.8"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -60,6 +61,8 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "0e9c71c2167ca323c882b99918929403426e2373ea17242ff5653e0d5e1058be"
 
 [[package]]
+=======
+>>>>>>> rewrite
 name = "getrandom"
 version = "0.4.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -82,7 +85,10 @@ name = "mlp"
 version = "0.1.0"
 dependencies = [
  "rand",
+<<<<<<< HEAD
  "rayon",
+=======
+>>>>>>> rewrite
 ]
 
 [[package]]
@@ -107,6 +113,7 @@ name = "rand_core"
 version = "0.10.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "63b8176103e19a2643978565ca18b50549f6101881c443590420e4dc998a3c69"
+<<<<<<< HEAD
 
 [[package]]
 name = "rayon"
@@ -127,3 +134,5 @@ dependencies = [
  "crossbeam-deque",
  "crossbeam-utils",
 ]
+=======
+>>>>>>> rewrite
