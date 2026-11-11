@@ -21,6 +21,9 @@ use activation::*;
 mod layernorm;
 use layernorm::*;
 
+mod dropout;
+use dropout::*;
+
 fn learn(x: f32) -> f32 {
     return (x * 2.0 * std::f32::consts::PI).sin() * 0.8;
 }
@@ -47,7 +50,7 @@ fn get_mlp_error(test: u32, mlp: &mut Graph) -> f32 {
 fn run_mlp(iter: u32, test: u32, freq: u32) -> f32 {
     let mut mlp = Graph::new();
     mlp.lr_start       = 0.001;
-    mlp.lr_end         = 0.000005;
+    mlp.lr_end         = 0.000001;
     mlp.total_steps    = iter;
     mlp.betta_1        = 0.9;
     mlp.betta_2        = 0.999;
@@ -91,8 +94,8 @@ fn run_mlp(iter: u32, test: u32, freq: u32) -> f32 {
         mlp.push_layer(Dense::new(32, 1)),
     ];
 
-    for i in (0..(layers.len() - 3) as u32).step_by(3) {
-        mlp.connect_layers(i, i + 3);
+    for i in (0..(layers.len() - 4) as u32).step_by(4) {
+        mlp.connect_layers(i, i + 4);
     }
 
     mlp.connect_layer_list(&layers);
