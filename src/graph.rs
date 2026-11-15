@@ -4,6 +4,13 @@ use crate::layer ::*;
 
 type NodeRef = u32;
 
+fn split_vec<T>(slice: &mut [T], element: usize) -> (&mut [T], &mut T, &mut [T]) {
+    let (left, right) = slice.split_at_mut(element);
+    let (element, right) = right.split_first_mut().unwrap();
+
+    (left, element, right)
+}
+
 struct Node {
     layer: Box<dyn Layer>,
     
@@ -217,8 +224,30 @@ impl Graph {
         self.end   = end;
     }
 
+    fn forward_layer(&mut self, i: usize, train: bool) {
+        let connections = self.adjacent.get_connections_to(i as u32);
+
+        let (left, node, right) = split_vec(&mut self.nodes, i);
+
+        for c in &connections {
+            let input_node = if (*c as usize) < i {
+                &mut left[*c as usize]
+            } else {
+                &mut right[*c as usize - i - 1]
+            };
+            
+            if *c == *connections.first().unwrap() {
+                node.input.assign_to(&input_node.output);
+            } else {
+                node.input += &input_node.output;
+            }
+        }
+
+        node.layer.forward(&node.input, &mut node.output, train);
+    }
+
     fn forward_helper(&mut self, input: &mut Matrix, train: bool) {
-        let Some(execution) = &self.exec else {
+        let Some(execution) = &self.exec.clone() else {
             panic!("Build the exec tree first using .build_exec()")
         };
 
@@ -227,24 +256,13 @@ impl Graph {
         if n < 2 {panic!("Too few layers are present; There must be at least 2: an input and output layer");}
 
         for i in execution {
-            let mut input_sum = Matrix::empty();
-
             if *i == self.start {
-                input_sum = input.clone();
+                let node = &mut self.nodes[*i as usize];
+                node.input.assign_to(input);
+                node.layer.forward(&node.input, &mut node.output, train);
             } else {
-                for c in self.adjacent.get_connections_to(*i) {
-                    if input_sum.is_empty() {
-                        input_sum = self.nodes[c as usize].output.clone();
-                    } else {
-                        input_sum += &self.nodes[c as usize].output;
-                    }
-                }
+                self.forward_layer(*i as usize, train);
             }
-            
-            let mut node = &mut self.nodes[*i as usize];
-            node.input = input_sum;
-
-            node.layer.forward(&node.input, &mut node.output, train);
         }
 
         input.clone_from(&self.nodes[self.end as usize].output);

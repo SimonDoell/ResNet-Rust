@@ -119,6 +119,14 @@ impl Matrix {
     pub fn get_rows(&self) -> usize {return self.rows;}
     pub fn get_cols(&self) -> usize {return self.cols;}
 
+    pub fn assign_to(&mut self, rhs: &Matrix) {
+        if self.shape() != rhs.shape() {
+            self.resize(rhs.shape());
+        }
+
+        self.values.clone_from(&rhs.values);
+    }
+
     pub fn iter_mut<'l>(&'l mut self) -> std::slice::IterMut<'l, f32> {
         return self.values.iter_mut();
     }
